@@ -1,0 +1,9 @@
+dist
+package-lock.json
+src/lib/supabase/database.types.ts
+supabase/migrations/
+supabase/tests/
+# Vite starter examples retained but no longer imported.
+src/App.tsx
+src/App.css
+src/index.css

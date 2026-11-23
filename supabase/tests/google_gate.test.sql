@@ -1,0 +1,13 @@
+begin;
+select plan(7);
+insert into public.universities(id,name,short_name) values ('60000000-0000-4000-8000-000000000001','테스트 Google 대학','테스트대');
+insert into public.university_email_domains(university_id,email_domain) values('60000000-0000-4000-8000-000000000001','school-google.example');
+select is(private.workspace_school('google',jsonb_build_object('hd','school-google.example','email','ok@school-google.example','email_verified',true)),'60000000-0000-4000-8000-000000000001'::uuid,'학교 관리 계정이 일치한다');
+select is(private.workspace_school('google','{"email":"external@gmail.com","email_verified":true}'::jsonb),null::uuid,'개인 Gmail은 승인하지 않는다');
+select is(private.workspace_school('google','{"email":"alias@school-google.example","email_verified":true}'::jsonb),null::uuid,'메일 도메인만으로 승인하지 않는다');
+select is(private.workspace_school('email','{"hd":"school-google.example","email":"ok@school-google.example","email_verified":true}'::jsonb),null::uuid,'Google 외 인증 경로로 승인하지 않는다');
+select is(private.workspace_school('google','{"hd":"school-google.example.other.example","email":"ok@school-google.example","email_verified":true}'::jsonb),null::uuid,'등록 조직 이름은 정확히 일치해야 한다');
+select is(private.workspace_school('google','{"hd":"school-google.example","email":"ok@school-google.example","email_verified":false}'::jsonb),null::uuid,'검증되지 않은 이메일은 승인하지 않는다');
+select is(private.workspace_school('google','{"custom_claims":{"hd":"school-google.example"},"email":"alias@school-google.example","email_verified":true}'::jsonb),'60000000-0000-4000-8000-000000000001'::uuid,'GoTrue 서명 토큰의 중첩된 hd도 처리한다');
+select * from finish();
+rollback;
