@@ -43,7 +43,9 @@ const ProjectPage = lazy(() =>
   import('../features/projects/ProjectPage').then((module) => ({ default: module.ProjectPage })),
 )
 const TeamWorkbenchPage = lazy(() =>
-  import('../features/team/TeamWorkbenchPage').then((module) => ({ default: module.TeamWorkbenchPage })),
+  import('../features/team/TeamWorkbenchPage').then((module) => ({
+    default: module.TeamWorkbenchPage,
+  })),
 )
 const ResearchPage = lazy(() =>
   import('../features/research/ResearchPage').then((module) => ({ default: module.ResearchPage })),
@@ -52,7 +54,9 @@ const MatchingPage = lazy(() =>
   import('../features/matching/MatchingPage').then((module) => ({ default: module.MatchingPage })),
 )
 const ProjectReportsPage = lazy(() =>
-  import('../features/reports/ProjectReportsPage').then((module) => ({ default: module.ProjectReportsPage })),
+  import('../features/reports/ProjectReportsPage').then((module) => ({
+    default: module.ProjectReportsPage,
+  })),
 )
 const ArchivePage = lazy(() =>
   import('../features/reports/ArchivePage').then((module) => ({ default: module.ArchivePage })),
@@ -78,9 +82,30 @@ export function AppRoutes() {
       <Route element={<RootLayout />}>
         <Route index element={<LandingPage />} />
         <Route path="explore" element={<ExplorePage />} />
-        <Route path="research/*" element={<BackendRoute><ResearchPage /></BackendRoute>} />
-        <Route path="opportunities/*" element={<BackendRoute><MatchingPage /></BackendRoute>} />
-        <Route path="archive" element={<BackendRoute><ArchivePage /></BackendRoute>} />
+        <Route
+          path="research/*"
+          element={
+            <BackendRoute>
+              <ResearchPage />
+            </BackendRoute>
+          }
+        />
+        <Route
+          path="opportunities/*"
+          element={
+            <BackendRoute>
+              <MatchingPage />
+            </BackendRoute>
+          }
+        />
+        <Route
+          path="archive"
+          element={
+            <BackendRoute>
+              <ArchivePage />
+            </BackendRoute>
+          }
+        />
         <Route path="login" element={<AuthPage key="login" mode="login" />} />
         <Route path="signup" element={<AuthPage key="signup" mode="signup" />} />
         <Route path="invite" element={<InvitePage />} />
