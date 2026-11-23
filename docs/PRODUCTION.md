@@ -1,14 +1,14 @@
 # 운영 환경: Vercel `collab` + Supabase `hsp`
 
-| 설정 | 값 |
-| --- | --- |
-| 메인 웹 주소 | `https://collab-blush-kappa.vercel.app/` |
-| Supabase 프로젝트 | `hsp` (`dvtzipqmpuvelonxhpwo`, Production) |
-| Vercel `VITE_SUPABASE_URL` | `https://dvtzipqmpuvelonxhpwo.supabase.co` |
-| Vercel `VITE_SUPABASE_PUBLISHABLE_KEY` | `hsp` Settings → API Keys의 공개용 키 |
-| Supabase Auth Site URL | `https://collab-blush-kappa.vercel.app` |
-| Supabase Auth Redirect URLs | `https://collab-blush-kappa.vercel.app/auth/callback` (정확한 경로만 허용) |
-| Google OAuth Web client의 승인된 리디렉션 URI | `https://dvtzipqmpuvelonxhpwo.supabase.co/auth/v1/callback` |
+| 설정                                          | 값                                                                         |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| 메인 웹 주소                                  | `https://collab-blush-kappa.vercel.app/`                                   |
+| Supabase 프로젝트                             | `hsp` (`dvtzipqmpuvelonxhpwo`, Production)                                 |
+| Vercel `VITE_SUPABASE_URL`                    | `https://dvtzipqmpuvelonxhpwo.supabase.co`                                 |
+| Vercel `VITE_SUPABASE_PUBLISHABLE_KEY`        | `hsp` Settings → API Keys의 공개용 키                                      |
+| Supabase Auth Site URL                        | `https://collab-blush-kappa.vercel.app`                                    |
+| Supabase Auth Redirect URLs                   | `https://collab-blush-kappa.vercel.app/auth/callback` (정확한 경로만 허용) |
+| Google OAuth Web client의 승인된 리디렉션 URI | `https://dvtzipqmpuvelonxhpwo.supabase.co/auth/v1/callback`                |
 
 ## Google 로그인 준비
 

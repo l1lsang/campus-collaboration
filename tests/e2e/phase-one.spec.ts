@@ -5,20 +5,23 @@ const inviteToken = 'a'.repeat(64)
 const invitePath = `/invite#${inviteToken}`
 
 test('비회원은 실제 로컬 Supabase에서 공개 프로젝트를 조회한다', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('학교는 달라도')
-  const publicProjects = page.waitForResponse((response) => {
-    const url = new URL(response.url())
-    return (
-      url.origin === localApi &&
-      url.pathname === '/rest/v1/projects' &&
-      url.searchParams.get('visibility') === 'eq.public'
-    )
-  })
-  await page.getByRole('link', { name: '프로젝트 둘러보기' }).first().click()
-  const response = await publicProjects
+  // Home and Explore reuse the same query, so capture the initial network read.
+  const [response] = await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        response.request().method() === 'GET' &&
+        url.origin === localApi &&
+        url.pathname === '/rest/v1/projects' &&
+        url.searchParams.get('visibility') === 'eq.public'
+      )
+    }),
+    page.goto('/'),
+  ])
   expect(response.ok()).toBe(true)
   expect(Array.isArray(await response.json())).toBe(true)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('학교는 달라도')
+  await page.getByRole('link', { name: '프로젝트 둘러보기' }).first().click()
   await page.getByLabel('키워드').fill(`검색 결과 없는 키워드 ${crypto.randomUUID()}`)
   await expect(page.getByText('조건에 맞는 프로젝트가 없어요.')).toBeVisible()
 })
