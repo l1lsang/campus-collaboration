@@ -68,6 +68,13 @@ it('글 유형을 바꾼 뒤에는 이전 유형의 필드를 전송하지 않�
   })
 })
 
+it('예약 ID가 없는 리부트 요청을 API에서 자동 생성하지 않는다', async () => {
+  await expect(createOpportunity('reboot', new FormData())).rejects.toThrow(
+    'MATCHING_REBOOT_ATTEMPT_UNAVAILABLE',
+  )
+  expect(rpc).not.toHaveBeenCalled()
+})
+
 it('역할과 시간대를 입력하지 않고 지원할 수 있다', async () => {
   rpc.mockResolvedValue('request-id')
   const form = new FormData()

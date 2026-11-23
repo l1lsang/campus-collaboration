@@ -1,4 +1,4 @@
-# Campus Collaboration Platform
+# collab.
 
 대학과 전공의 경계를 넘어 프로젝트를 만들고 팀을 구성하는 독립 플랫폼입니다. 초기 이용 대상은 성신여자대학교·덕성여자대학교·한성대학교 학생이며, 대학 공식 서비스나 제휴 프로그램이 아닙니다. **팀플로그**는 플랫폼 내부 프로젝트 공간의 이름입니다.
 
@@ -11,7 +11,7 @@ Node.js `22.13+`, npm, 실행 중인 Docker가 필요합니다. 프로젝트 폴
 ```bash
 npm ci
 docker network create -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 campus-collaboration-local
-npx supabase start --network-id campus-collaboration-local -x storage-api,realtime,imgproxy,edge-runtime,logflare,vector,studio,supavisor
+npx supabase start --network-id campus-collaboration-local -x realtime,imgproxy,edge-runtime,logflare,vector,studio,supavisor
 npm run dev:local
 ```
 

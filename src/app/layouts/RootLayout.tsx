@@ -1,4 +1,4 @@
-import { Box, Info, LogOut, UserRound } from 'lucide-react'
+import { Info, LogOut, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { Button } from '../../components/ui/button'
@@ -7,13 +7,19 @@ import { brand } from '../../lib/constants/brand'
 import { getSupabase } from '../../lib/supabase/client'
 import { useAuth } from '../../features/auth/auth-provider'
 
+function Wordmark() {
+  return (
+    <span className="brand-wordmark">
+      {brand.wordmark}
+      <span className="brand-period">.</span>
+    </span>
+  )
+}
+
 export function BrandLink() {
   return (
     <Link to="/" className="brand" aria-label={`${brand.name} 홈`}>
-      <span className="brand-symbol">
-        <Box size={21} strokeWidth={2.4} aria-hidden="true" />
-      </span>
-      <strong>{brand.label}</strong>
+      <Wordmark />
     </Link>
   )
 }
@@ -57,14 +63,11 @@ export function RootLayout() {
         <div className="container site-nav">
           <BrandLink />
           <nav className="main-nav" aria-label="주 메뉴">
-            <NavLink end to="/">
-              홈
-            </NavLink>
             <NavLink to="/explore">프로젝트 탐색</NavLink>
             <NavLink to="/opportunities">협업 모집</NavLink>
             <NavLink to="/research">품앗이</NavLink>
             <NavLink to="/archive">경험 아카이브</NavLink>
-            {session && <NavLink to="/dashboard">내 대시보드</NavLink>}
+            {session && <NavLink to="/dashboard">내 프로젝트</NavLink>}
           </nav>
           <div className="nav-actions">
             {!loading &&
@@ -110,10 +113,7 @@ export function RootLayout() {
       </div>
       <footer className="site-footer">
         <div className="container footer-content">
-          <div>
-            <strong>{brand.name}</strong>
-            <p>대학과 전공의 경계를 넘어 함께 만드는 곳.</p>
-          </div>
+          <Wordmark />
           <p className="footer-note">
             <Info size={16} aria-hidden="true" /> 독립 프로젝트 · 대학 공식 서비스가 아닙니다.
           </p>

@@ -23,7 +23,9 @@ import {
   type MatchingRequest,
   type Opportunity,
   type OpportunityType,
+  type RebootAttachment,
 } from './matching-api'
+import { downloadRebootAttachment } from './reboot-attachments'
 
 const sections = [
   { path: '/opportunities', label: '전체 모집', type: null },
@@ -256,14 +258,28 @@ function OpportunityCard({
           <strong>함께 해결할 부분:</strong> {item.gap}
         </p>
       )}
-      {item.type === 'reboot' &&
-        (item.source_project_id ? (
-          <Link className="text-link" to={`/projects/${item.source_project_id}`}>
-            공개 원본 보기
-          </Link>
-        ) : (
-          <p className="muted">공개 원본을 더 이상 볼 수 없어요.</p>
-        ))}
+      {item.type === 'reboot' && (
+        <>
+          {item.reboot_prior_work && (
+            <div>
+              <strong>이전까지 해 둔 작업</strong>
+              <p className="preserve-text">{item.reboot_prior_work}</p>
+            </div>
+          )}
+          {item.reboot_changes && (
+            <div>
+              <strong>멈춘 이유와 바꿀 점</strong>
+              <p className="preserve-text">{item.reboot_changes}</p>
+            </div>
+          )}
+          {item.reboot_attachment && <RebootDownload attachment={item.reboot_attachment} />}
+          {item.source_project_id && (
+            <Link className="text-link" to={`/projects/${item.source_project_id}`}>
+              공개 원본 보기
+            </Link>
+          )}
+        </>
+      )}
       {item.competition && (
         <p>
           <strong>공모전:</strong> {item.competition}
@@ -328,6 +344,31 @@ function OpportunityCard({
         )}
       </div>
     </li>
+  )
+}
+
+function RebootDownload({ attachment }: { attachment: RebootAttachment }) {
+  const download = useMutation({ mutationFn: () => downloadRebootAttachment(attachment) })
+  return (
+    <div className="flow">
+      <div className="wrap">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={download.isPending}
+          onClick={() => download.mutate()}
+        >
+          {download.isPending ? '다운로드 중…' : `${attachment.filename} 다운로드`}
+        </Button>
+        <span className="muted">
+          {new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(
+            attachment.size / 1024,
+          )}{' '}
+          KB
+        </span>
+      </div>
+      {download.isError && <Notice kind="error">첨부 파일을 내려받지 못했습니다.</Notice>}
+    </div>
   )
 }
 

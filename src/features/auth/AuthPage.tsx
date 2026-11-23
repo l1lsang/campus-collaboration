@@ -51,25 +51,26 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   return (
     <main className="narrow page auth-page" id="main-content">
       <PageHeading
-        label="학교 계정 인증"
         title={isSignup ? '회원가입' : '로그인'}
-        description="등록된 학교의 Google Workspace 계정으로만 이용할 수 있습니다. 개인 Gmail과 이메일 인증 코드는 지원하지 않습니다."
+        description="학교에서 발급한 Google 계정을 사용하세요. 개인 Gmail로는 로그인할 수 없습니다."
       />
       {!isSupabaseConfigured ? (
         <Unconfigured />
       ) : (
-        <div className="panel flow">
+        <div className="auth-options flow">
           {status === 'denied' && (
-            <Notice kind="error">
-              기존 로그인으로는 접근할 수 없습니다. 등록된 학교의 Google Workspace 계정으로 다시
-              로그인해 주세요.
-            </Notice>
+            <Notice kind="error">등록된 학교의 Google 계정으로 다시 로그인해 주세요.</Notice>
           )}
           {status === 'error' && <AuthVerificationError />}
           {error && (
             <Notice kind="error">Google 로그인을 시작하지 못했습니다. 다시 시도해 주세요.</Notice>
           )}
-          <Button type="button" disabled={starting} onClick={() => void startGoogle()}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={starting}
+            onClick={() => void startGoogle()}
+          >
             {starting ? 'Google로 이동 중…' : '학교 Google 계정으로 계속하기'}
           </Button>
         </div>
