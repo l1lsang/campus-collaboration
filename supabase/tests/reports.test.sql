@@ -63,14 +63,16 @@ select ok(current_setting('reports.from_team') like '%내부팀원%검증 담당
 select ok(current_setting('reports.from_team') like '%완료한 실제 작업%' and current_setting('reports.from_team') like '%task:' || current_setting('reports.done') || '%','완료 작업을 실제 근거 ID와 함께 결과에 포함한다');
 select ok(current_setting('reports.from_team') like '%인계할 실제 작업%' and current_setting('reports.from_team') not like '%작업 상세%','미완료 작업에 근거한 인수인계와 필요한 정보만 제공한다');
 select is(jsonb_array_length(public.list_report_archive()),0,'보고서는 기본적으로 공개되지 않는다');
+set local request.jwt.claim.sub = '00000000-0000-4000-8100-000000000001';
 select set_config('reports.v1',public.save_project_report(current_setting('reports.project')::uuid,'handoff',0,
   '{"goals":"  내부 목표  ","roles":"내부 운영 담당","results":"팀에서 확인한 결과","failure":"내부 실패","handoff":"내부 인수인계"}')::text,true);
-select is((current_setting('reports.v1')::jsonb->>'number')::int,1,'팀원은 첫 판을 저장할 수 있다');
+select is((current_setting('reports.v1')::jsonb->>'number')::int,1,'소유자는 첫 판을 저장할 수 있다');
 select is(current_setting('reports.v1')::jsonb->'inputs'->>'goals','내부 목표','저장된 입력은 양끝 공백을 제외한다');
 select ok(current_setting('reports.v1')::jsonb->'draft'->'sections' @> '[{"key":"handoff","items":[{"text":"내부 인수인계","sourceIds":["input:handoff"]}]}]','인수인계 초안에는 입력 근거가 있다');
 select throws_ok($$select public.save_project_report(current_setting('reports.project')::uuid,'handoff',0,'{}')$$,'P0001','REPORT_REVISION_CONFLICT','최신판보다 오래된 편집은 덮어쓸 수 없다');
 select set_config('reports.v2',public.save_project_report(current_setting('reports.project')::uuid,'handoff',1,'{"results":"새 결과"}')::text,true);
 select is((current_setting('reports.v2')::jsonb->>'number')::int,2,'다음 판은 새 번호로 추가된다');
+set local request.jwt.claim.sub = '00000000-0000-4000-8100-000000000002';
 select is(public.get_project_report_revision(current_setting('reports.project')::uuid,'handoff',(current_setting('reports.v1')::jsonb->>'id')::uuid),current_setting('reports.v1')::jsonb,'이전 판의 초안과 입력은 그대로 남는다');
 select is(jsonb_array_length(public.list_project_report_revisions(current_setting('reports.project')::uuid,'handoff',2)),1,'이력은 이전 번호를 기준으로 조회할 수 있다');
 select throws_ok($$select public.get_project_report_revision(current_setting('reports.project')::uuid,'activity',(current_setting('reports.v1')::jsonb->>'id')::uuid)$$,'P0001','REPORT_REVISION_NOT_FOUND','다른 보고서 유형의 판을 열 수 없다');

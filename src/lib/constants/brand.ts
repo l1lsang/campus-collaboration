@@ -1,6 +1,8 @@
+const wordmark = 'collab'
+
 export const brand = {
-  name: 'Campus Collaboration Platform',
-  label: '캠퍼스 협업 플랫폼',
+  wordmark,
+  name: `${wordmark}.`,
   workspace: '팀플로그',
 } as const
 

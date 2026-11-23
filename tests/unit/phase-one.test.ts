@@ -23,12 +23,33 @@ describe('참여 링크 및 로그인 복귀 경로', () => {
     expect(authReturnPath(`/invite#${token}`)).toBe(`/invite#${token}`)
     expect(authReturnPath('/projects/new')).toBe('/projects/new')
   })
+  it.each([
+    '/opportunities',
+    '/opportunities/ideas',
+    '/opportunities/reboots',
+    '/opportunities/contests',
+    '/opportunities/new',
+    '/opportunities/mine',
+    '/opportunities/requests',
+    '/research',
+    '/research/new',
+    '/research/mine',
+    '/research/credits',
+  ])('인증 후 모집 경로 %s로 돌아간다', (path) => expect(authReturnPath(path)).toBe(path))
+  it.each(['/opportunities/new', '/research/new', '/projects/new'])(
+    '허용된 경로 %s의 끝 슬래시 하나만 정규화한다',
+    (path) => expect(authReturnPath(`${path}/`)).toBe(path),
+  )
   it('허용되지 않은 외부 또는 내부 주소로 이동하지 않는다', () => {
     for (const path of [
       '//example.invalid',
       'https://example.invalid',
       '/\\example.invalid',
       '/admin',
+      '//opportunities/new/',
+      '/opportunities/new//',
+      '/opportunities/new/?next=/admin',
+      '/opportunities/new/\n',
       '/invite#wrong',
     ]) {
       expect(authReturnPath(path)).toBe('/dashboard')

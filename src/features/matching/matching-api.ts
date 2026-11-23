@@ -38,7 +38,11 @@ export type Opportunity = {
   is_open: boolean
   request_status: RequestStatus | null
   project_id: string | null
+  reboot_prior_work: string | null
+  reboot_changes: string | null
+  reboot_attachment: RebootAttachment | null
 }
+export type RebootAttachment = { path: string; filename: string; mime: string; size: number }
 export type MatchingRequest = {
   id: string
   opportunity_title: string
@@ -99,12 +103,19 @@ export function listRebootSources(search: string, page: number) {
   })
 }
 
-export async function createOpportunity(type: OpportunityType, form: FormData) {
+export async function createOpportunity(
+  type: OpportunityType,
+  form: FormData,
+  reboot?: { requestId: string; hasAttachment: boolean; rpc: typeof campusRpc },
+) {
+  if (type === 'reboot' && !reboot?.requestId)
+    throw new Error('MATCHING_REBOOT_ATTEMPT_UNAVAILABLE')
   const deadline = type === 'contest' ? read(form, 'deadline') : null
   const deadlineDate = deadline ? new Date(deadline) : null
   if (deadlineDate && !Number.isFinite(deadlineDate.getTime()))
     throw new Error('MATCHING_INVALID_TYPE_FIELDS')
-  return campusRpc<string>('create_matching_opportunity', {
+  const rpc = type === 'reboot' && reboot ? reboot.rpc : campusRpc
+  return rpc<string>('create_matching_opportunity', {
     p_type: type,
     p_title: read(form, 'title'),
     p_description: read(form, 'description'),
@@ -117,6 +128,13 @@ export async function createOpportunity(type: OpportunityType, form: FormData) {
     p_competition: type === 'contest' ? read(form, 'competition') : null,
     p_format: type === 'contest' ? read(form, 'format') : null,
     p_deadline: deadlineDate?.toISOString() ?? null,
+    ...(type === 'reboot' &&
+      reboot && {
+        p_reboot_prior_work: read(form, 'reboot_prior_work'),
+        p_reboot_changes: read(form, 'reboot_changes'),
+        p_reboot_request_id: reboot.requestId,
+        p_reboot_has_attachment: reboot.hasAttachment,
+      }),
   })
 }
 
@@ -149,6 +167,25 @@ const messages: Record<string, string> = {
   MATCHING_INVALID_DETAILS: '제목·소개 길이와 역할·역량 태그(최대 10개, 각 40자)를 확인해 주세요.',
   MATCHING_INVALID_TYPE_FIELDS: '선택한 유형의 필수 항목과 마감 일시를 확인해 주세요.',
   MATCHING_INVALID_UNIVERSITY: '현재 선택할 수 없는 대학입니다.',
+  MATCHING_REBOOT_DETAILS_REQUIRED:
+    '이전 작업과 멈춘 이유·바꿀 점을 각각 2~2,000자로 작성해 주세요.',
+  MATCHING_REBOOT_INVALID_FILE: 'PDF, JPG, PNG 중 하나를 선택해 주세요. 파일당 최대 10MB입니다.',
+  MATCHING_REBOOT_INVALID_FILENAME:
+    '파일 이름을 확인해 주세요. 특수문자 없이 120자 이하로 입력해 주세요.',
+  MATCHING_REBOOT_UPLOAD_FAILED: '파일을 올리지 못했습니다. 다시 시도해 주세요.',
+  MATCHING_REBOOT_ACCOUNT_CHANGED: '로그인 계정이 변경되어 등록을 중단했습니다.',
+  MATCHING_REBOOT_BROWSER_STORAGE_UNAVAILABLE:
+    '이 브라우저에서 등록 요청을 보관할 수 없습니다. 브라우저 설정을 확인해 주세요.',
+  MATCHING_REBOOT_ATTEMPT_ACTIVE: '이전 리부트 등록을 처리 중입니다. 잠시 후 다시 시도해 주세요.',
+  MATCHING_REBOOT_ATTACHMENT_UNAVAILABLE: '첨부 파일을 확인하지 못했습니다. 다시 시도해 주세요.',
+  MATCHING_REBOOT_ATTEMPT_UNAVAILABLE: '이전 등록 요청은 만료되었습니다. 다시 시도해 주세요.',
+  MATCHING_REBOOT_CLEANUP_FAILED:
+    '등록 결과를 확인하지 못했습니다. 다시 시도하면 이전 요청부터 확인합니다.',
+  MATCHING_REBOOT_UPLOAD_LIMIT: '등록 시도가 너무 많습니다. 한 시간 뒤 다시 시도해 주세요.',
+  MATCHING_REBOOT_PENDING_LIMIT:
+    '미게시 첨부가 5개에 도달했습니다. 다른 탭의 등록을 마치거나 잠시 뒤 다시 시도해 주세요. 첨부 없이 등록할 수도 있습니다.',
+  MATCHING_REBOOT_STORAGE_LIMIT:
+    '계정의 첨부 한도(50개)에 도달했습니다. 파일 없이 등록하거나 관리자에게 문의해 주세요.',
   MATCHING_REBOOT_SOURCE_UNAVAILABLE: '중단·완료된 공개 프로젝트만 리부트할 수 있습니다.',
   MATCHING_OPPORTUNITY_UNAVAILABLE: '이 모집글을 찾을 수 없거나 관리 권한이 없습니다.',
   MATCHING_OPPORTUNITY_CLOSED: '이미 지원이 마감된 모집글입니다.',

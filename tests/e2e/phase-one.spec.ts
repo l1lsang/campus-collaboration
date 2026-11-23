@@ -20,10 +20,40 @@ test('비회원은 실제 로컬 Supabase에서 공개 프로젝트를 조회한
   ])
   expect(response.ok()).toBe(true)
   expect(Array.isArray(await response.json())).toBe(true)
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('학교는 달라도')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('대학생 프로젝트와 팀원 모집')
+  await expect(page.getByRole('heading', { name: '최근 공개 프로젝트' })).toBeVisible()
+  await expect(page.getByText('예정', { exact: true })).toHaveCount(0)
   await page.getByRole('link', { name: '프로젝트 둘러보기' }).first().click()
   await page.getByLabel('키워드').fill(`검색 결과 없는 키워드 ${crypto.randomUUID()}`)
   await expect(page.getByText('조건에 맞는 프로젝트가 없어요.')).toBeVisible()
+})
+
+test('모바일 홈에서 협업 메뉴를 이용할 수 있고 좌우로 페이지가 넘치지 않는다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await expect(page).toHaveTitle('collab.')
+  await expect(page.getByRole('navigation', { name: '주 메뉴' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '최근 공개 프로젝트' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '협업 모집' })
+    .click()
+  await expect(page).toHaveURL(/\/opportunities$/)
+  const home = page.getByRole('link', { name: 'collab. 홈', exact: true })
+  const dot = home.locator('.brand-period')
+  await expect(dot).toBeVisible({ timeout: 5_000 })
+  const mark = await dot.evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect()
+    return { width, height, radius: getComputedStyle(element).borderRadius }
+  })
+  expect(mark.width).toBeGreaterThan(0)
+  expect(mark.width).toBe(mark.height)
+  expect(mark.radius).toBe('0px')
+  await home.focus({ timeout: 5_000 })
+  await expect(home).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/$/)
 })
 
 test('보호 경로는 학교 Google 로그인으로 이동하고 가입에도 이메일 인증 폼이 없다', async ({
@@ -75,6 +105,25 @@ test('초대 프래그먼트는 PKCE 요청을 시작한 뒤 취소하고 재시
   )
   await page.getByRole('link', { name: '로그인 다시 시작' }).click()
   await assertAuthorize()
+})
+
+test('경로 끝에 슬래시가 있어도 모집글 등록 화면을 로그인 복귀 경로로 기억한다', async ({
+  page,
+  baseURL,
+}) => {
+  const authorize = (url: URL) => url.origin === localApi && url.pathname === '/auth/v1/authorize'
+  // Cancel the navigation so the first-party tab and its session storage remain readable.
+  await page.route(authorize, (route) => route.fulfill({ status: 204 }))
+  await page.goto('/opportunities/new/')
+  await page.getByRole('main').getByRole('link', { name: '로그인', exact: true }).click()
+  const request = page.waitForRequest((req) => authorize(new URL(req.url())))
+  await page.getByRole('button', { name: '학교 Google 계정으로 계속하기' }).click()
+  expect(new URL((await request).url()).searchParams.get('redirect_to')).toBe(
+    new URL('/auth/callback', baseURL).href,
+  )
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('campus:oauth-return')))
+    .toBe('/opportunities/new')
 })
 
 test('PKCE 코드가 없는 콜백은 실패 안내와 재시도 링크를 표시한다', async ({ page }) => {

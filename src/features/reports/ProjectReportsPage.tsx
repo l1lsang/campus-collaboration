@@ -1,40 +1,29 @@
-import {
-  skipToken,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
-import { useState } from 'react'
+import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { z } from 'zod'
 import { Field, Loading, Notice, PageHeading } from '../../components/common/states'
 import { Button } from '../../components/ui/button'
 import { useAuth } from '../auth/auth-provider'
 import { PublishReportPanel } from './PublishReportPanel'
+import { ReportDraftEditor } from './ReportDraftEditor'
+import { useReportDraft } from './report-draft-state'
+import { useReportWorkspaceKey } from './report-workspace-key'
 import {
   getRevision,
   getWorkspace,
   historyPageSize,
   listRevisions,
-  previewReport,
   reportDate,
   reportError,
-  reportInputLabels,
   reportKinds,
-  saveReport,
-  workspaceKey,
-  type ReportDraft,
-  type ReportInputKey,
-  type ReportInputs,
+  templateSectionLabels,
   type ReportKind,
   type ReportRevision,
   type ReportWorkspace as Workspace,
 } from './reports-api'
 
 const kinds = Object.keys(reportKinds) as ReportKind[]
-const inputs = Object.entries(reportInputLabels) as [ReportInputKey, string][]
-const sectionLabels = { ...reportInputLabels, context: '프로젝트 개요', activity: '활동 타임라인' }
 const sourceLabels: Record<string, string> = {
   project: '프로젝트 정보',
   membership: '팀원 명단',
@@ -46,10 +35,26 @@ const sourceLabels: Record<string, string> = {
 
 type Scope = { projectId: string; userId: string; kind: ReportKind }
 
-function DraftView({ draft, title }: { draft: ReportDraft; title: string }) {
+function RevisionPreview({ revision, label }: { revision: ReportRevision; label: string }) {
+  const { draft } = revision
+  if (draft.method === 'editable') {
+    return (
+      <section className="panel flow" aria-label={label}>
+        <p className="muted">{label}</p>
+        <h2 className="wrap-anywhere">{draft.title}</h2>
+        {draft.source === 'template' && <span className="chip">템플릿에서 시작</span>}
+        {draft.sections.map(({ heading, body }, index) => (
+          <section key={index} className="flow wrap-anywhere">
+            <h3>{heading}</h3>
+            {body && <p className="preserve-text">{body}</p>}
+          </section>
+        ))}
+      </section>
+    )
+  }
   return (
     <section className="panel flow">
-      <h2>{title}</h2>
+      <h2>{label}</h2>
       <span className="chip">템플릿 초안</span>
       {draft.notes.length > 0 && (
         <ul className="muted">
@@ -60,7 +65,7 @@ function DraftView({ draft, title }: { draft: ReportDraft; title: string }) {
       )}
       {draft.sections.map(({ key, items }) => (
         <section key={key} className="flow">
-          <h3>{sectionLabels[key]}</h3>
+          <h3>{templateSectionLabels[key]}</h3>
           {items.length > 0 ? (
             <ul className="divided-list">
               {items.map((item, index) => {
@@ -86,147 +91,6 @@ function DraftView({ draft, title }: { draft: ReportDraft; title: string }) {
   )
 }
 
-function ReportEditor({
-  projectId,
-  userId,
-  kind,
-  initialRevision,
-}: Scope & { initialRevision: ReportRevision | null }) {
-  const cache = useQueryClient()
-  const ref = { p_project_id: projectId, p_kind: kind }
-  const [base, setBase] = useState(initialRevision)
-  const [edits, setEdits] = useState<ReportInputs>(initialRevision?.inputs ?? {})
-  const [draft, setDraft] = useState<ReportDraft | null>(null)
-  const [message, setMessage] = useState('')
-  const key = workspaceKey(userId, ref)
-  const refresh = () => cache.invalidateQueries({ queryKey: key })
-  const preview = useMutation({
-    mutationFn: (values: ReportInputs) => previewReport(ref, values),
-    onSuccess: setDraft,
-  })
-  const save = useMutation({
-    mutationFn: async (values: ReportInputs) => {
-      const result = await saveReport(ref, base?.number ?? 0, values)
-      const confirmed = await getRevision(ref, result.id)
-      if (confirmed.id !== result.id || confirmed.number !== result.number)
-        throw new Error('REPORT_READBACK_FAILED')
-      return confirmed
-    },
-    onSuccess: (saved) => {
-      setBase(saved)
-      setEdits(saved.inputs)
-      setDraft(null)
-      setMessage(`${saved.number}판을 저장했습니다.`)
-      return refresh()
-    },
-  })
-  const reload = useMutation({
-    mutationFn: () => getWorkspace(ref),
-    onSuccess: ({ latestRevision }) => {
-      setBase(latestRevision)
-      setEdits(latestRevision?.inputs ?? {})
-      setDraft(null)
-      setMessage('최신판을 불러왔습니다.')
-      return refresh()
-    },
-  })
-  const pending = preview.isPending || save.isPending || reload.isPending
-  const error = reload.error ?? save.error ?? preview.error
-  return (
-    <>
-      <section className="panel flow" aria-label="보고서 편집">
-        <h2>보고서 편집</h2>
-        <p className="muted">
-          프로젝트 정보와 허용된 팀 활동 기록을 바탕으로 초안을 만듭니다. 추가로 확인한 내용만 적어
-          주세요. 익명 피드백과 체크인 원문은 입력하지 마세요.
-        </p>
-        {base && (
-          <p className="muted">
-            편집 기준: {base.number}판 · {reportDate(base.createdAt)}
-          </p>
-        )}
-        <form
-          className="flow"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (pending) return
-            setMessage('')
-            preview.reset()
-            reload.reset()
-            save.mutate(edits)
-          }}
-        >
-          {inputs.map(([key, label]) => {
-            const id = `report-input-${key}`
-            return (
-              <Field key={key} id={id} label={label}>
-                <textarea
-                  id={id}
-                  className="input"
-                  rows={2}
-                  maxLength={2000}
-                  value={edits[key] ?? ''}
-                  disabled={pending}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setEdits((previous) => ({ ...previous, [key]: value }))
-                    setDraft(null)
-                    setMessage('')
-                  }}
-                />
-              </Field>
-            )
-          })}
-          <div className="split-row">
-            <Button
-              variant="outline"
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                setMessage('')
-                save.reset()
-                reload.reset()
-                preview.mutate(edits)
-              }}
-            >
-              {preview.isPending ? '초안 생성 중…' : '템플릿 초안 만들기'}
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {save.isPending ? '저장 중…' : '새 판 저장'}
-            </Button>
-          </div>
-          <p className="muted">
-            저장할 때 최신 활동 근거로 다시 생성합니다. 이전 판은 그대로 유지됩니다.
-          </p>
-        </form>
-        {message && <Notice kind="success">{message}</Notice>}
-        {error && (
-          <Notice kind="error">
-            {reportError(error, '요청을 완료하지 못했습니다. 저장한 경우 최신판을 확인해 주세요.')}
-          </Notice>
-        )}
-        {save.isError && (
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => {
-              setMessage('')
-              reload.mutate(undefined, { onSuccess: () => save.reset() })
-            }}
-          >
-            현재 입력을 버리고 최신판 불러오기
-          </Button>
-        )}
-      </section>
-      {draft ? (
-        <DraftView draft={draft} title="저장 전 미리보기" />
-      ) : (
-        base && <DraftView draft={base.draft} title={`${base.number}판 보고서`} />
-      )}
-    </>
-  )
-}
-
 function RevisionHistory({
   projectId,
   userId,
@@ -240,8 +104,9 @@ function RevisionHistory({
   latestId: string | undefined
 }) {
   const ref = { p_project_id: projectId, p_kind: kind }
+  const key = useReportWorkspaceKey(userId, ref)
   const history = useInfiniteQuery({
-    queryKey: [...workspaceKey(userId, ref), 'history'],
+    queryKey: [...key, 'history'],
     queryFn: ({ pageParam }) => listRevisions(ref, pageParam),
     initialPageParam: null as number | null,
     getNextPageParam: (page) => (page.length === historyPageSize ? page.at(-1)?.number : undefined),
@@ -302,8 +167,9 @@ function RevisionHistory({
 function ReportContents({ projectId, userId, kind, workspace }: Scope & { workspace: Workspace }) {
   const [selected, setSelected] = useState<string | null>(null)
   const ref = { p_project_id: projectId, p_kind: kind }
+  const key = useReportWorkspaceKey(userId, ref)
   const history = useQuery({
-    queryKey: [...workspaceKey(userId, ref), 'revision', selected],
+    queryKey: [...key, 'revision', selected],
     queryFn: selected ? () => getRevision(ref, selected) : skipToken,
     retry: false,
     gcTime: 0,
@@ -315,12 +181,25 @@ function ReportContents({ projectId, userId, kind, workspace }: Scope & { worksp
     : workspace.latestRevision
   return (
     <div className="flow">
-      <ReportEditor
-        projectId={projectId}
-        userId={userId}
-        kind={kind}
-        initialRevision={workspace.latestRevision}
-      />
+      {workspace.isOwner ? (
+        <ReportDraftEditor
+          projectId={projectId}
+          userId={userId}
+          kind={kind}
+          defaultTitle={`${workspace.title} · ${reportKinds[kind]}`}
+          latestRevision={workspace.latestRevision}
+        />
+      ) : (
+        <p className="muted">
+          저장된 보고서를 볼 수 있습니다. 편집은 프로젝트 소유자만 할 수 있습니다.
+        </p>
+      )}
+      {workspace.latestRevision && !selected && (
+        <RevisionPreview
+          revision={workspace.latestRevision}
+          label={`${workspace.latestRevision.number}판 보고서`}
+        />
+      )}
       <RevisionHistory
         projectId={projectId}
         userId={userId}
@@ -338,7 +217,7 @@ function ReportContents({ projectId, userId, kind, workspace }: Scope & { worksp
           </Notice>
         ) : (
           history.data && (
-            <DraftView draft={history.data.draft} title={`이력 · ${history.data.number}판`} />
+            <RevisionPreview revision={history.data} label={`이력 · ${history.data.number}판`} />
           )
         ))}
       {workspace.isOwner && (
@@ -357,14 +236,26 @@ function ReportContents({ projectId, userId, kind, workspace }: Scope & { worksp
 
 function ReportWorkspace({ projectId, userId, kind }: Scope) {
   const ref = { p_project_id: projectId, p_kind: kind }
+  const key = useReportWorkspaceKey(userId, ref)
+  const setDraft = useReportDraft()?.setDraft
   const workspace = useQuery({
-    queryKey: workspaceKey(userId, ref),
+    queryKey: key,
     queryFn: () => getWorkspace(ref),
     retry: false,
     gcTime: 0,
   })
+  const accessDenied = [
+    'PROJECT_MEMBER_REQUIRED',
+    'VERIFIED_UNIVERSITY_REQUIRED',
+    'PROFILE_REQUIRED',
+  ].includes(workspace.error?.message ?? '')
+  const discardDraft = !workspace.isPending && (accessDenied || !workspace.data?.isOwner)
+  useEffect(() => {
+    if (discardDraft) setDraft?.(null)
+  }, [discardDraft, setDraft])
+
   if (workspace.isPending) return <Loading />
-  if (workspace.isError)
+  if (!workspace.data || accessDenied)
     return (
       <Notice kind="error">
         {reportError(workspace.error, '보고서 작업공간을 불러오지 못했습니다.')}{' '}
@@ -375,6 +266,14 @@ function ReportWorkspace({ projectId, userId, kind }: Scope) {
     )
   return (
     <>
+      {workspace.isError && (
+        <Notice>
+          최신 내용을 불러오지 못해 마지막으로 불러온 보고서를 표시합니다.{' '}
+          <button type="button" className="text-link" onClick={() => void workspace.refetch()}>
+            다시 시도
+          </button>
+        </Notice>
+      )}
       <h2>
         {workspace.data.title} · {reportKinds[kind]}
       </h2>
@@ -391,7 +290,8 @@ function ReportWorkspace({ projectId, userId, kind }: Scope) {
 export function ProjectReportsPage() {
   const { id } = useParams()
   const auth = useAuth()
-  const [kind, setKind] = useState<ReportKind>('activity')
+  const draftMemory = useReportDraft()
+  const [kind, setKind] = useState<ReportKind>(draftMemory?.draft?.kind ?? 'activity')
   const projectId = z.uuid().safeParse(id)
   const userId = auth.session?.user.id
   return (
@@ -403,7 +303,7 @@ export function ProjectReportsPage() {
       )}
       <PageHeading
         title="프로젝트 보고서"
-        description="팀원용 초안을 생성하고 저장한 판을 검토합니다."
+        description="팀 내부 보고서의 저장된 판과 편집 이력을 확인합니다."
       />
       {!projectId.success ? (
         <Notice kind="error">유효한 프로젝트 주소가 아닙니다.</Notice>
@@ -429,7 +329,10 @@ export function ProjectReportsPage() {
               value={kind}
               onChange={(event) => {
                 const selected = kinds.find((kind) => kind === event.target.value)
-                if (selected) setKind(selected)
+                if (selected && selected !== kind) {
+                  draftMemory?.setDraft(null)
+                  setKind(selected)
+                }
               }}
             >
               {kinds.map((kind) => (

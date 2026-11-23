@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
+import type { ReactNode } from 'react'
 import { Loading, Notice } from '../../components/common/states'
 import { AuthVerificationError } from '../../features/auth/AuthVerificationError'
 import { useAuth } from '../../features/auth/auth-provider'
@@ -24,11 +25,19 @@ export function RequireAuth() {
   return <Outlet />
 }
 
-export function RequireProfile() {
+export function RequireProfile({
+  verificationFailure,
+  waitForInitialRefresh = false,
+}: {
+  verificationFailure?: ReactNode
+  waitForInitialRefresh?: boolean
+}) {
   const { session } = useAuth()
   const { pathname } = useLocation()
   const profile = useMyProfile(session!.user.id)
-  if (profile.isPending)
+  const refreshing =
+    waitForInitialRefresh && !profile.isFetchedAfterMount && profile.fetchStatus !== 'idle'
+  if (profile.isPending || refreshing)
     return (
       <main className="container page" id="main-content">
         <Loading label="프로필 확인 중…" />
@@ -37,6 +46,7 @@ export function RequireProfile() {
   if (profile.isError)
     return (
       <main className="container page" id="main-content">
+        {verificationFailure}
         <Notice kind="error">
           프로필을 불러오지 못했습니다.{' '}
           <button className="text-link" onClick={() => void profile.refetch()}>

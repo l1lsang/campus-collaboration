@@ -3,13 +3,13 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Field, Notice } from '../../components/common/states'
 import { Button } from '../../components/ui/button'
+import { useReportWorkspaceKey } from './report-workspace-key'
 import {
   archiveKey,
   getWorkspace,
   publishReport,
   reportError,
   unpublishReport,
-  workspaceKey,
   type Publication,
   type PublicText,
   type ReportKind,
@@ -42,9 +42,10 @@ export function PublishReportPanel({
   const [consent, setConsent] = useState(false)
   const [notice, setNotice] = useState('')
   const ref = { p_project_id: projectId, p_kind: kind }
+  const key = useReportWorkspaceKey(userId, ref)
   const refresh = () =>
     Promise.all([
-      cache.invalidateQueries({ queryKey: workspaceKey(userId, ref), exact: true }),
+      cache.invalidateQueries({ queryKey: key, exact: true }),
       cache.invalidateQueries({ queryKey: archiveKey }),
     ])
   const publish = useMutation({

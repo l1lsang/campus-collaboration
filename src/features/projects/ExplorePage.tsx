@@ -76,7 +76,7 @@ export function ExplorePage() {
                   검색 결과 {results.length}개 <span>· 최근 공개 프로젝트 최대 100개 기준</span>
                 </p>
                 {results.length ? (
-                  <ul className="project-grid">
+                  <ul className="project-list">
                     {results.map((project) => (
                       <ProjectCard key={project.id} project={project} />
                     ))}

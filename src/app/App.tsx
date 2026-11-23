@@ -5,6 +5,7 @@ import { RootLayout } from './layouts/RootLayout'
 import { RequireAuth, RequireProfile } from './router/guards'
 import { AuthProvider } from '../features/auth/auth-provider'
 import { LandingPage } from '../features/landing/LandingPage'
+import { DiscardReportDraft, ReportDraftScope } from '../features/reports/ReportDraftScope'
 import { isSupabaseConfigured } from '../lib/supabase/client'
 import { Loading, PageHeading, Unconfigured } from '../components/common/states'
 import { Button } from '../components/ui/button'
@@ -141,7 +142,20 @@ export function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="projects/new" element={<CreateProjectPage />} />
             <Route path="projects/:id/team" element={<TeamWorkbenchPage />} />
-            <Route path="projects/:id/reports" element={<ProjectReportsPage />} />
+          </Route>
+        </Route>
+        <Route path="projects/:id/reports" element={<ReportDraftScope />}>
+          <Route element={<RequireAuth />}>
+            <Route
+              element={
+                <RequireProfile
+                  waitForInitialRefresh
+                  verificationFailure={<DiscardReportDraft />}
+                />
+              }
+            >
+              <Route index element={<ProjectReportsPage />} />
+            </Route>
           </Route>
         </Route>
         <Route
