@@ -5,6 +5,7 @@ import { Loading, Notice, PageHeading } from '../../components/common/states'
 import { categoryLabel, brand } from '../../lib/constants/brand'
 import { useAuth } from '../auth/auth-provider'
 import { useMembership, useProject } from './project-api'
+import { ProjectManagement } from './ProjectManagement'
 import { TeamPanel } from './TeamPanel'
 
 const formatDate = (date: string | null) => (date ? date.replaceAll('-', '.') : '미정')
@@ -24,7 +25,7 @@ export function ProjectPage({ team = false }: { team?: boolean }) {
         <Notice kind="error">유효한 프로젝트 주소가 아닙니다.</Notice>
       </main>
     )
-  return <ProjectContent id={id} userId={auth.session?.user.id} team={team} />
+  return <ProjectContent id={id.toLowerCase()} userId={auth.session?.user.id} team={team} />
 }
 
 function ProjectContent({ id, userId, team }: { id: string; userId?: string; team: boolean }) {
@@ -85,6 +86,16 @@ function ProjectContent({ id, userId, team }: { id: string; userId?: string; tea
               )
             ) : (
               <section className="panel flow project-description">
+                {project.data.status === 'completed' && (
+                  <span className="chip justify-self-start">완료</span>
+                )}
+                {userId && membership.data === 'owner' && !membership.isError && (
+                  <ProjectManagement
+                    key={`${userId}:${id}`}
+                    userId={userId}
+                    project={project.data}
+                  />
+                )}
                 <h2>프로젝트 소개</h2>
                 <p className="preserve-text">{project.data.description}</p>
                 <div className="project-details">

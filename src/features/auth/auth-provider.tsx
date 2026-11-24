@@ -1,7 +1,15 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase, isSupabaseConfigured } from '../../lib/supabase/client'
+import { publishVerifiedSession } from './verified-session'
 
 type AuthState = {
   session: Session | null
@@ -85,10 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   else if (schoolId) status = 'verified'
   else if (rawSession) status = 'denied'
 
+  const session = schoolId ? rawSession : null
+  useLayoutEffect(() => {
+    publishVerifiedSession(queryClient, session)
+  }, [queryClient, session])
+
   return (
     <AuthContext.Provider
       value={{
-        session: schoolId ? rawSession : null,
+        session,
         loading,
         schoolId,
         status,
